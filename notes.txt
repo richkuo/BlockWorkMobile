@@ -1,0 +1,14 @@
+when a dispute is executed...
+
+arbiter receives a task
+  via event listener
+
+then they arbitrate
+  ex: are these two values the same
+  yes or no
+  (sign with private key via ethers)
+
+import abi for blockwork contract
+
+recieve payment
+  wallet page showing balance
