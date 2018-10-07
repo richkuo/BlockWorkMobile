@@ -34,8 +34,8 @@ export default class TaskPage extends Component<Props> {
       agreement: '',
       work: '',
       arbiter: '',
-      contractAddress: '0x7db51ba22a144c06622b5f73ca88e115a9497910',
-      // contractAddress: props.navigation.state.params.contractAddress,
+      // contractAddress: '0x7db51ba22a144c06622b5f73ca88e115a9497910',
+      contractAddress: props.navigation.state.params.contractAddress,
     }
 
     // address public requester;
