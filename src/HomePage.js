@@ -30,28 +30,83 @@ export default class HomePage extends Component<Props> {
       // this data needs to come in from api call
       showButton: false,
       contractAddress: '',
+      contract: {},
+      privateKey: '0x20B302F901490EBC6D412F1A0D09605A01A0E033959747DA0BB2D8E0FCE2133D',
+      currentBlockNumber: '',
+      latestBlock: {},
+      transactionHash: '',
     }
 
-    // Toggle the state every second
-    // setInterval(() => {
-    //   this.setState(previousState => {
-    //     return { isShowingText: !previousState.isShowingText }
-    //   })
-    // }, 1000)
-  }
-
-  componentWillMount() {
-    this.getContract()
-  }
-
-  getContract = () => {
     let url = "https://sokol.poa.network";
     let provider = new ethers.providers.JsonRpcProvider(url);
 
-    // test if this works
-    provider.getBlockNumber().then((blockNumber) => {
-      console.log("Current block number: " + blockNumber);
-    });
+    setInterval(() => {
+      // console.log('interval')
+
+      // console.log('contractAddress: ' + this.state.contractAddress)
+
+      if(this.state.contractAddress !== '') {
+        this.getContract(this.state.contractAddress)
+      } else {
+        provider.getBlockNumber().then((blockNumber) => {
+          // console.log(blockNumber)
+          if(this.state.currentBlockNumber !== blockNumber) {
+            this.setState({
+              currentBlockNumber: blockNumber,
+            })
+
+            provider.getBlock(blockNumber).then((latestBlock) => {
+              this.setState({
+                latestBlock: latestBlock,
+              })
+
+              // console.log(latestBlock)
+
+              if(latestBlock.transactions.length > 0) {
+                // console.log('more than 1 transaction')
+                // console.log(latestBlock.transactions[latestBlock.transactions.length - 1])
+
+                this.setState({
+                  transactionHash: latestBlock.transactions[latestBlock.transactions.length - 1],
+                })
+
+                // console.log('setState then this.getTransactionHash')
+                this.getTransactionHash(latestBlock.transactions[latestBlock.transactions.length - 1])
+              }
+            })
+          }
+        })
+      }
+    }, 2000)
+  }
+
+  componentWillMount() {
+  }
+
+  getTransactionHash = (transactionHash) => {
+    console.log('getTransactionHash')
+    console.log(transactionHash)
+    let url = "https://sokol.poa.network";
+    let provider = new ethers.providers.JsonRpcProvider(url);
+
+    provider.getTransaction(transactionHash).then((transaction) => {
+      console.log('this is the transaction')
+      console.log(transaction)
+      if(transaction.creates !== null) {
+        this.setState({
+          contractAddress: transaction.creates,
+        })
+
+        this.getContract(transaction.creates)
+      } else {
+        console.log('transaction.creates is: ' + transaction.creates)
+      }
+    })
+  }
+
+  getContract = (contractAddress) => {
+    let url = "https://sokol.poa.network";
+    let provider = new ethers.providers.JsonRpcProvider(url);
 
     // Connecting to an existing Contract
     // The Contract interface
@@ -59,46 +114,22 @@ export default class HomePage extends Component<Props> {
 
     // The address from the above deployment example
     // this needs to come from 
-    let contractAddress = "0x800fbeb2c082e024dc793dd21bcfab08dbb622a7";
+    // let contractAddress = "0xe854e3b216c4360b37934f9fe5e9fad792279243";
+    // let contractAddress = this.state.contractAddress;
 
-    this.setState({
-      contractAddress: contractAddress,
-    })
-
-    // We connect to the Contract using a Provider, so we will only
-    // have read-only access to the Contract
     let contract = new ethers.Contract(contractAddress, abi, provider);
 
-    console.log(contract)
+    try {
+      contract.isRejected().then((reject) => {
+        this.changeButtonState(reject)
+      })
 
-    contract.isRejected().then((reject) => {
-      this.changeButtonState(reject)
-    })
-
-    // if i am an arbiter
-    // if my public key is on this contract
-    // display begin task button
-
-    // event listeners
-    // contract.on("CreateJob", (author, oldValue, newValue, event) => {
-    //   // Called when anyone changes the value
-
-    //   console.log(author);
-    //   // "0x14791697260E4c9A71f18484C9f997B308e59325"
-
-    //   console.log(oldValue);
-    //   // "Hello World"
-
-    //   console.log(newValue);
-    //   // "Ilike turtles."
-
-    //   // See Event Emitter below for all properties on Event
-    //   console.log(event.blockNumber);
-    //   // 4115004
-
-    //   // if the arbiter address is mine, listen to it
-    //   // upon dispute, go to task page
-    // });
+      this.setState({
+        contract: contract,
+      })
+    } catch(err) {
+      console.log('this is not ours')
+    }
   }
 
   changeButtonState = (reject) => {
@@ -108,23 +139,30 @@ export default class HomePage extends Component<Props> {
   }
 
   renderStartButton = () => {
-    if(this.state.showButton == true) {
-      return <TouchableOpacity
-        onPress={() => this.props.navigation.navigate('TaskPage', this.state)}
-        style={styles.button}
-      >
-        <Text>
-          You have a job available
-        </Text>
-      </TouchableOpacity>
+    if(this.state.showButton !== true) {
+      return <View>
+        <Text style={styles.welcome}>You have a job available</Text>
+        <TouchableOpacity
+          onPress={() => this.props.navigation.navigate('TaskPage', this.state)}
+          style={styles.button}
+        >
+          <Text style={styles.buttonText}>
+            Lets go!
+          </Text>
+        </TouchableOpacity>
+      </View>
+    } else {
+      return <Text style={styles.instructions}>To get started, enter your public key</Text>
     }
   }
 
   render() {
     return (
       <View style={styles.container}>
-        <Text style={styles.welcome}>Welcome to BlockWork!</Text>
-        <Text style={styles.instructions}>To get started, enter your public key</Text>
+        <Text style={styles.welcome}>Welcome</Text>
+
+        <Text style={styles.welcome}>ETH San Francisco</Text>
+
         {this.renderStartButton()}
       </View>
     );
@@ -139,9 +177,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5FCFF',
   },
   welcome: {
-    fontSize: 20,
+    fontSize: 35,
     textAlign: 'center',
-    margin: 10,
+    margin: 15,
+    padding: 5,
   },
   instructions: {
     textAlign: 'center',
@@ -149,6 +188,14 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   button: {
-
-  }
+    backgroundColor: '#E82424',
+    margin: 10,
+    padding: 15,
+    borderRadius: 5,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 20,
+    textAlign: 'center',
+  },
 });
